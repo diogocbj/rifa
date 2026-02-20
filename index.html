@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rifa</title>
+	<meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Rifa">
+    <meta name="theme-color" content="#075e54">
+    
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/512/clover.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/512/clover.png">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #e5ddd5; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { color: #075e54; text-align: center; margin: 0 0 10px 0; }
+        label { font-weight: bold; font-size: 13px; color: #555; display: block; margin-top: 15px; }
+        textarea { width: 100%; height: 70px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-family: inherit; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 5px; background: #f1f1f1; padding: 12px; border-radius: 8px; }
+        .row { display: flex; gap: 8px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; outline: none; font-size: 16px; }
+        .pg-check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; color: #075e54; font-weight: bold; margin-top: 5px; }
+        button { padding: 12px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
+        .btn-vender { background: #25d366; color: white; flex: 1; }
+        .btn-copiar { background: #34b7f1; color: white; width: 100%; margin: 10px 0; font-size: 16px; }
+        
+        #containerErro { display: none; background: #ffebee; border: 1px solid #ffcdd2; padding: 10px; border-radius: 5px; margin-top: 10px; color: #b71c1c; font-size: 13px; align-items: center; justify-content: space-between; }
+        .btn-copy-error { background: #ef9a9a; color: #b71c1c; padding: 5px 10px; font-size: 11px; margin-left: 10px; }
+
+        .lista { margin-top: 15px; border-top: 2px solid #eee; margin-bottom: 20px; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .nome-container { cursor: pointer; flex: 1; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
+        .nome-container:hover { background: #dcf8c6; }
+        .num-box { font-weight: bold; color: #075e54; width: 35px; display: inline-block; }
+        .pago { color: #25d366; font-weight: bold; font-size: 12px; margin-left: 5px; }
+        .livre { color: #ccc; font-style: italic; font-size: 13px; }
+        .btn-apagar { color: #ff5252; font-size: 18px; font-weight: bold; padding: 0 10px; cursor: pointer; border-radius: 50%; }
+        
+        .btn-reset { background: #ff5252; color: white; width: 100%; font-size: 11px; margin-top: 40px; opacity: 0.5; }
+        .stats { font-size: 12px; color: #666; text-align: center; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🎫 Gerenciador de Rifa</h2>
+    <div id="estatisticas" class="stats">Sincronizando...</div>
+
+    <label>Cabeçalho:</label>
+    <textarea id="cabecalho" placeholder="Ex: 🎰 RIFA DOS AMIGOS"></textarea>
+
+    <div class="input-group">
+        <label>Venda (Ex: 1 2 3 4 5 André):</label>
+        <div class="row">
+            <input type="text" id="vendaInput" placeholder="Números e nome...">
+            <button class="btn-vender" onclick="registrarVenda()">Add</button>
+        </div>
+        <label class="pg-check">
+            <input type="checkbox" id="checkPagoImediato"> Marcar como PAGO
+        </label>
+        
+        <div id="containerErro">
+            <span id="textoErro"></span>
+            <button class="btn-copy-error" onclick="copiarErro()">Copiar Erro</button>
+        </div>
+    </div>
+
+    <button class="btn-copiar" onclick="copiarWhatsApp()">📋 Copiar para WhatsApp</button>
+
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <select id="maxNumeros" onchange="mudarTamanho()">
+            <option value="60">Rifa de 1 a 60</option>
+            <option value="80">Rifa de 1 a 80</option>
+        </select>
+        <span style="font-size: 11px; color: #888;">Toque no nome PG Lote ou X para apagar</span>
+    </div>
+
+    <div class="lista" id="listaConteudo"></div>
+
+    <label>Rodapé (WhatsApp):</label>
+    <textarea id="rodape" placeholder="Instruções de pagamento..."></textarea>
+
+    <button class="btn-reset" onclick="resetarDados()">⚠️ Limpar Tudo (Nova Rifa)</button>
+</div>
+
+<script>
+        // --- CONFIGURE SEU FIREBASE AQUI ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyBiHTfza39peQZToW0nc6uUCZ4izdfolK4",
+  authDomain: "rifabarcarlinho.firebaseapp.com",
+  databaseURL: "https://rifabarcarlinho-default-rtdb.firebaseio.com",
+  projectId: "rifabarcarlinho",
+  storageBucket: "rifabarcarlinho.firebasestorage.app",
+  messagingSenderId: "702869135678",
+  appId: "1:702869135678:web:09be2fe74e936496038c6f"
+};
+    // -------------------------------------
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const refRifa = db.ref('rifa_final_v3');
+
+    const textoPadraoRodape = "*OBS: enviar o comprovante do PIX aqui*";
+
+    refRifa.on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        renderizar(data);
+    });
+
+    function renderizar(data) {
+        const cabInput = document.getElementById('cabecalho');
+        const rodInput = document.getElementById('rodape');
+        if (document.activeElement !== cabInput) cabInput.value = data.cabecalho || "";
+        if (document.activeElement !== rodInput) rodInput.value = data.rodape !== undefined ? data.rodape : textoPadraoRodape;
+
+        const limite = data.limite || 60;
+        document.getElementById('maxNumeros').value = limite;
+        
+        let html = "";
+        const vendas = data.vendas || {};
+        let countVendidos = 0;
+
+        for (let i = 1; i <= limite; i++) {
+            let n = i.toString().padStart(2, '0');
+            let info = vendas[n];
+            if(info) countVendidos++;
+            html += `<div class="item">
+                <div class="nome-container">
+                    <span onclick="${info ? `toggleLote('${info.nome}', ${info.pago})` : ''}" style="flex:1">
+                        <span class="num-box">${n}:</span>
+                        ${info ? `<b>${info.nome}</b> ${info.pago ? '<span class="pago">PG</span>' : ''}` : '<span class="livre">---</span>'}
+                    </span>
+                    ${info ? `<span class="btn-apagar" onclick="apagarNumero('${n}')">×</span>` : ''}
+                </div>
+            </div>`;
+        }
+        document.getElementById('listaConteudo').innerHTML = html;
+        document.getElementById('estatisticas').innerText = `${countVendidos} vendidos de ${limite}`;
+    }
+
+    function registrarVenda() {
+        const str = document.getElementById('vendaInput').value.trim();
+        const jaPago = document.getElementById('checkPagoImediato').checked;
+        const erroBox = document.getElementById('containerErro');
+        const erroTexto = document.getElementById('textoErro');
+        
+        erroBox.style.display = 'none';
+        if (!str) return;
+
+        const partes = str.split(/\s+/); // Divide por qualquer espaço
+        const nome = partes.pop();
+        const numerosDigitados = partes;
+
+        // VALIDAÇÃO: Verifica se o nome contém pelo menos uma letra
+        const temLetra = /[a-zA-Z]/.test(nome);
+
+        if (numerosDigitados.length === 0 || !nome || !temLetra) {
+            erroTexto.innerText = "Erro: Informe o nome do apostador após os números (Ex: 05 10 João).";
+            erroBox.style.display = 'flex';
+            return;
+        }
+
+        refRifa.child('/').once('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            const atuais = data.vendas || {};
+            const limiteAtual = data.limite || 60;
+            
+            let updates = {};
+            let ocupados = [];
+            let invalidos = [];
+
+            numerosDigitados.forEach(numStr => {
+                let nVal = parseInt(numStr);
+                let nStr = nVal.toString().padStart(2, '0');
+
+                if (isNaN(nVal) || nVal < 1 || nVal > limiteAtual) {
+                    invalidos.push(numStr);
+                } else if (atuais[nStr]) {
+                    ocupados.push({num: nStr, dono: atuais[nStr].nome});
+                } else {
+                    updates[nStr] = { nome: nome, pago: jaPago };
+                }
+            });
+
+            if (invalidos.length > 0) {
+                erroTexto.innerText = `Erro: Números ${invalidos.join(', ')} inválidos (Máx: ${limiteAtual}).`;
+                erroBox.style.display = 'flex';
+            } else if (ocupados.length > 0) {
+                const listaNums = ocupados.map(o => o.num).join(', ');
+                const donos = [...new Set(ocupados.map(o => o.dono))].join(' e ');
+                erroTexto.innerText = `Números ${listaNums} já em uso por ${donos}.`;
+                erroBox.style.display = 'flex';
+            } else {
+                refRifa.child('vendas').update(updates);
+                document.getElementById('vendaInput').value = "";
+                document.getElementById('checkPagoImediato').checked = false;
+            }
+        });
+    }
+
+    function apagarNumero(n) {
+        if(confirm(`Deseja liberar o número ${n}?`)) {
+            refRifa.child('vendas/' + n).remove();
+        }
+    }
+
+    function toggleLote(nomeCliente, statusAtual) {
+        refRifa.child('vendas').once('value', (snapshot) => {
+            const vendas = snapshot.val() || {};
+            let updates = {};
+            Object.keys(vendas).forEach(num => {
+                if (vendas[num].nome === nomeCliente) updates[num + '/pago'] = !statusAtual;
+            });
+            refRifa.child('vendas').update(updates);
+        });
+    }
+
+    document.getElementById('cabecalho').addEventListener('input', (e) => refRifa.update({ cabecalho: e.target.value }));
+    document.getElementById('rodape').addEventListener('input', (e) => refRifa.update({ rodape: e.target.value }));
+
+    function mudarTamanho() {
+        const novoLimite = parseInt(document.getElementById('maxNumeros').value);
+        refRifa.update({ limite: novoLimite });
+    }
+
+    function copiarWhatsApp() {
+        refRifa.once('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            const limite = data.limite || 60;
+            const vendas = data.vendas || {};
+            let texto = (data.cabecalho || "") + "\n\n";
+            for (let i = 1; i <= limite; i++) {
+                let n = i.toString().padStart(2, '0');
+                let info = vendas[n];
+                texto += `${n}: ${info ? info.nome + (info.pago ? ' 🍀' : '') : ''}\n`;
+            }
+            texto += "\n" + (data.rodape || textoPadraoRodape);
+            navigator.clipboard.writeText(texto);
+            alert("Lista copiada!");
+        });
+    }
+
+    function resetarDados() {
+        const confirmacao = prompt("Para LIMPAR TUDO, digite SIM:");
+        if (confirmacao && confirmacao.toUpperCase() === "SIM") {
+            refRifa.set({ 
+                limite: parseInt(document.getElementById('maxNumeros').value), 
+                cabecalho: document.getElementById('cabecalho').value, 
+                rodape: document.getElementById('rodape').value,
+                vendas: {} 
+            });
+        }
+    }
+
+    function copiarErro() {
+        navigator.clipboard.writeText(document.getElementById('textoErro').innerText);
+        alert("Erro copiado!");
+    }
+</script>
+</body>
+</html>
