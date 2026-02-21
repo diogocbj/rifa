@@ -10,7 +10,12 @@
 	<meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Rifa">
     <meta name="theme-color" content="#075e54">
-    
+    <script>
+	  if ('serviceWorker' in navigator) {
+		navigator.serviceWorker.register('sw.js')
+		  .then(function() { console.log("Service Worker Registrado!"); });
+	  }
+	</script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
