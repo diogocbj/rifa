@@ -1,0 +1,16 @@
+{
+  "short_name": "RifaSync",
+  "name": "Rifa Inteligente Sync",
+  "icons": [
+    {
+      "src": "icone.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#e5ddd5",
+  "display": "standalone",
+  "theme_color": "#075e54",
+  "scope": "./"
+}
