@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rifa</title>
+    <title>Rifa Sync</title>
 	<link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icone.png">
     <link rel="apple-touch-icon" href="icone.png">
@@ -26,17 +26,18 @@
         textarea { width: 100%; height: 70px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; box-sizing: border-box; font-family: inherit; }
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 5px; background: #f1f1f1; padding: 12px; border-radius: 8px; }
         .row { display: flex; gap: 8px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; outline: none; font-size: 16px; }
+        input[type="text"], input[type="date"], input[type="number"], select { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; outline: none; font-size: 15px; background: white; }
         .pg-check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; color: #075e54; font-weight: bold; margin-top: 5px; }
         button { padding: 12px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
         .btn-vender { background: #25d366; color: white; flex: 1; }
         .btn-copiar { background: #34b7f1; color: white; width: 100%; margin: 10px 0; font-size: 16px; }
+        .btn-nav { background: #075e54; color: white; width: 100%; margin-top: 15px; font-size: 15px; }
         
         #containerErro { display: none; background: #ffebee; border: 1px solid #ffcdd2; padding: 10px; border-radius: 5px; margin-top: 10px; color: #b71c1c; font-size: 13px; align-items: center; justify-content: space-between; }
         .btn-copy-error { background: #ef9a9a; color: #b71c1c; padding: 5px 10px; font-size: 11px; margin-left: 10px; }
 
         .lista { margin-top: 15px; border-top: 2px solid #eee; margin-bottom: 20px; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
         .nome-container { cursor: pointer; flex: 1; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; }
         .nome-container:hover { background: #dcf8c6; }
         .num-box { font-weight: bold; color: #075e54; width: 35px; display: inline-block; }
@@ -46,19 +47,29 @@
         
         .btn-reset { background: #ff5252; color: white; width: 100%; font-size: 11px; margin-top: 40px; opacity: 0.5; }
         .stats { font-size: 12px; color: #666; text-align: center; margin-bottom: 8px; }
+
+        /* Estilos específicos para Resultados */
+        .res-info { display: flex; flex-direction: column; flex: 1; }
+        .res-topo { font-size: 12px; color: #666; margin-bottom: 4px; }
+        .res-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; }
+        .bg-mega { background: #209869; }
+        .bg-quina { background: #260085; }
     </style>
 </head>
 <body>
 
-<div class="card">
+<div class="card" id="telaRifa">
     <h2>🎫 Gerenciador de Rifa</h2>
+	
+	<button class="btn-nav" style="margin-top: 0; margin-bottom: 15px;" onclick="alternarTelas('telaResultados')">🏆 Ir para Resultados</button>
+	
     <div id="estatisticas" class="stats">Sincronizando...</div>
-
+	
     <label>Cabeçalho:</label>
     <textarea id="cabecalho" placeholder="Ex: 🎰 RIFA DOS AMIGOS"></textarea>
 
     <div class="input-group">
-        <label>Venda (Ex: 1 2 3 4 5 André):</label>
+        <label>Venda (Ex: 1,2.3;4-5 6 Andre):</label>
         <div class="row">
             <input type="text" id="vendaInput" placeholder="Números e nome...">
             <button class="btn-vender" onclick="registrarVenda()">Add</button>
@@ -73,10 +84,10 @@
         </div>
     </div>
 
-    <button class="btn-copiar" onclick="copiarWhatsApp()">📋 Copiar para WhatsApp</button>
+    <button class="btn-copiar" onclick="copiarWhatsApp()">📋 Copiar Lista WhatsApp</button>
 
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <select id="maxNumeros" onchange="mudarTamanho()">
+        <select id="maxNumeros" onchange="mudarTamanho()" style="flex: none; width: auto; padding: 5px;">
             <option value="60">Rifa de 1 a 60</option>
             <option value="80">Rifa de 1 a 80</option>
         </select>
@@ -88,28 +99,74 @@
     <label>Rodapé (WhatsApp):</label>
     <textarea id="rodape" placeholder="Instruções de pagamento..."></textarea>
 
-    <button class="btn-reset" onclick="resetarDados()">⚠️ Limpar Tudo (Nova Rifa)</button>
+    <button class="btn-reset" onclick="resetarDados()">⚠️ Limpar Apenas a Rifa</button>
+	
 </div>
 
+
+<div class="card" id="telaResultados" style="display: none;">
+    <h2>🏆 Ganhadores & Resultados</h2>
+    
+    <button class="btn-nav" style="margin-top: 0; background: #555; margin-bottom: 15px;" onclick="alternarTelas('telaRifa')">⬅️ Voltar para a Rifa</button>
+
+    <div class="input-group">
+        <label>Adicionar Ganhador:</label>
+        <input type="date" id="resData">
+        <input type="text" id="resNome" placeholder="Nome do Ganhador">
+        <div class="row">
+            <select id="resTipo">
+                <option value="Mega">Mega</option>
+                <option value="Quina">Quina</option>
+            </select>
+            <input type="number" id="resNumero" placeholder="Nº Sorteado">
+        </div>
+        <label class="pg-check">
+            <input type="checkbox" id="resPago"> Sorteio Pago (PG)
+        </label>
+        <button class="btn-vender" onclick="adicionarResultado()">Salvar Ganhador</button>
+    </div>
+
+    <button class="btn-copiar" onclick="copiarResultados()">📋 Copiar Resultados para WhatsApp</button>
+
+    <div class="lista" id="listaResultadosConteudo">
+        <div class="stats">Nenhum resultado registrado ainda.</div>
+    </div>
+</div>
+
+
 <script>
-        // --- CONFIGURE SEU FIREBASE AQUI ---
-        const firebaseConfig = {
-  apiKey: "AIzaSyBiHTfza39peQZToW0nc6uUCZ4izdfolK4",
-  authDomain: "rifabarcarlinho.firebaseapp.com",
-  databaseURL: "https://rifabarcarlinho-default-rtdb.firebaseio.com",
-  projectId: "rifabarcarlinho",
-  storageBucket: "rifabarcarlinho.firebasestorage.app",
-  messagingSenderId: "702869135678",
-  appId: "1:702869135678:web:09be2fe74e936496038c6f"
-};
+    // --- CONFIGURE SEU FIREBASE AQUI ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiHTfza39peQZToW0nc6uUCZ4izdfolK4",
+      authDomain: "rifabarcarlinho.firebaseapp.com",
+      databaseURL: "https://rifabarcarlinho-default-rtdb.firebaseio.com",
+      projectId: "rifabarcarlinho",
+      storageBucket: "rifabarcarlinho.firebasestorage.app",
+      messagingSenderId: "702869135678",
+      appId: "1:702869135678:web:09be2fe74e936496038c6f"
+    };
     // -------------------------------------
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const refRifa = db.ref('rifa_final_v3');
+    
+    // Referências do Banco de Dados
+    const refRifa = db.ref('rifabarcarlinho_v4');
+    const refResultados = db.ref('rifabarcarlinho_v4/resultados');
 
     const textoPadraoRodape = "*OBS: enviar o comprovante do PIX aqui*";
 
+    // ====== NAVEGAÇÃO ENTRE TELAS ======
+    function alternarTelas(telaAtiva) {
+        document.getElementById('telaRifa').style.display = 'none';
+        document.getElementById('telaResultados').style.display = 'none';
+        document.getElementById(telaAtiva).style.display = 'block';
+        window.scrollTo(0, 0);
+    }
+
+    // ==========================================
+    // ====== LÓGICA DA TELA 1: RIFA ============
+    // ==========================================
     refRifa.on('value', (snapshot) => {
         const data = snapshot.val() || {};
         renderizar(data);
@@ -155,8 +212,7 @@
 		erroBox.style.display = 'none';
 		if (!str) return;
 
-		// Agora aceita espaço ( ), vírgula (,) e hífen (-)
-		const partes = str.split(/[\s,\-]+/).filter(p => p.trim() !== "");
+		const partes = str.split(/[\s,\-.;]+/).filter(p => p.trim() !== "");
 		const nome = partes.pop();
 		const numerosDigitados = partes;
 		const temLetra = /[a-zA-Z]/.test(nome);
@@ -247,21 +303,139 @@
         });
     }
 
+    // CORREÇÃO AQUI: Agora apaga apenas as vendas e protege os resultados!
     function resetarDados() {
-        const confirmacao = prompt("Para LIMPAR TUDO, digite SIM:");
+        const confirmacao = prompt("Para LIMPAR A RIFA (Ganhadores serão mantidos), digite SIM:");
         if (confirmacao && confirmacao.toUpperCase() === "SIM") {
-            refRifa.set({ 
+            // Atualiza cabeçalho, rodapé e limite preservando a estrutura
+            refRifa.update({ 
                 limite: parseInt(document.getElementById('maxNumeros').value), 
                 cabecalho: document.getElementById('cabecalho').value, 
-                rodape: document.getElementById('rodape').value,
-                vendas: {} 
+                rodape: document.getElementById('rodape').value
             });
+            // Remove estritamente apenas a lista de números vendidos
+            refRifa.child('vendas').remove();
+            alert("Rifa limpa! O histórico de resultados continuou intacto.");
         }
     }
 
     function copiarErro() {
         navigator.clipboard.writeText(document.getElementById('textoErro').innerText);
         alert("Erro copiado!");
+    }
+
+
+    // ==========================================
+    // ====== LÓGICA DA TELA 2: RESULTADOS ======
+    // ==========================================
+    function formatarDataBr(dataString) {
+        if(!dataString) return "";
+        const p = dataString.split('-');
+        if(p.length !== 3) return dataString;
+        return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+
+    refResultados.on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        renderizarResultados(data);
+    });
+
+    function renderizarResultados(dados) {
+        const divConteudo = document.getElementById('listaResultadosConteudo');
+        
+        if (Object.keys(dados).length === 0) {
+            divConteudo.innerHTML = '<div class="stats">Nenhum resultado registrado ainda.</div>';
+            return;
+        }
+
+        let html = "";
+        const keys = Object.keys(dados).reverse(); 
+
+        keys.forEach(key => {
+            const res = dados[key];
+            const badgeClass = res.tipo === 'Mega' ? 'bg-mega' : 'bg-quina';
+            
+            html += `
+            <div class="item">
+                <div class="nome-container">
+                    <div class="res-info" onclick="togglePagoResultado('${key}', ${res.pago})">
+                        <div class="res-topo">
+                            🗓️ ${formatarDataBr(res.data)}
+                        </div>
+                        <div>
+                            <span class="res-badge ${badgeClass}">${res.tipo}</span>
+                            <span style="font-weight: bold; color: #333;">Nº ${res.numero}</span> - 
+                            <b>${res.nome}</b> 
+                            ${res.pago ? '<span class="pago">PG</span>' : ''}
+                        </div>
+                    </div>
+                    <span class="btn-apagar" onclick="apagarResultado('${key}')">×</span>
+                </div>
+            </div>`;
+        });
+
+        divConteudo.innerHTML = html;
+    }
+
+    function adicionarResultado() {
+        const data = document.getElementById('resData').value;
+        const nome = document.getElementById('resNome').value.trim();
+        const tipo = document.getElementById('resTipo').value;
+        const numero = document.getElementById('resNumero').value.trim();
+        const pago = document.getElementById('resPago').checked;
+
+        if (!data || !nome || !numero) {
+            alert("Por favor, preencha Data, Nome e Número.");
+            return;
+        }
+
+        refResultados.push({
+            data: data,
+            nome: nome,
+            tipo: tipo,
+            numero: numero,
+            pago: pago
+        });
+
+        document.getElementById('resNome').value = "";
+        document.getElementById('resNumero').value = "";
+        document.getElementById('resPago').checked = false;
+    }
+
+    function togglePagoResultado(id, statusAtual) {
+        refResultados.child(id).update({ pago: !statusAtual });
+    }
+
+    // O "X" continua funcionando individualmente por linha aqui
+    function apagarResultado(id) {
+        if(confirm("Deseja realmente apagar este ganhador do histórico?")) {
+            refResultados.child(id).remove();
+        }
+    }
+
+    function copiarResultados() {
+        refResultados.once('value', (snapshot) => {
+            const dados = snapshot.val() || {};
+            if (Object.keys(dados).length === 0) {
+                alert("Não há resultados para copiar.");
+                return;
+            }
+
+            let texto = "🏆 *RESULTADOS DOS SORTEIOS* 🏆\n\n";
+            
+            const keys = Object.keys(dados).reverse();
+            keys.forEach(key => {
+                const res = dados[key];
+                const statusStr = res.pago ? ' ✅ Pago' : ' ⏳ Aguardando Pagamento';
+                texto += `🗓️ *${formatarDataBr(res.data)}*\n`;
+                texto += `🍀 *${res.tipo}* - Sorteado: *Nº ${res.numero}*\n`;
+                texto += `👤 Ganhador: ${res.nome}\n`;
+                texto += `💰 Status:${statusStr}\n\n`;
+            });
+
+            navigator.clipboard.writeText(texto.trim());
+            alert("Resultados copiados para o WhatsApp!");
+        });
     }
 </script>
 </body>
