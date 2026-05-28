@@ -52,6 +52,7 @@
         .res-info { display: flex; flex-direction: column; flex: 1; }
         .res-topo { font-size: 12px; color: #666; margin-bottom: 4px; }
         .res-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; }
+        .res-ordem { font-size: 11px; color: #555; background: #eee; padding: 2px 5px; border-radius: 4px; margin-right: 5px; }
         .bg-mega { background: #209869; }
         .bg-quina { background: #260085; }
     </style>
@@ -117,6 +118,11 @@
             <select id="resTipo">
                 <option value="Mega">Mega</option>
                 <option value="Quina">Quina</option>
+            </select>
+            <select id="resOrdem">
+                <option value="Último Número">Último Número</option>
+                <option value="Penúltimo Número">Penúltimo Número</option>
+                <option value="Anti Penúltimo Número">Anti Penúltimo Número</option>
             </select>
             <input type="number" id="resNumero" placeholder="Nº Sorteado">
         </div>
@@ -303,17 +309,14 @@
         });
     }
 
-    // CORREÇÃO AQUI: Agora apaga apenas as vendas e protege os resultados!
     function resetarDados() {
         const confirmacao = prompt("Para LIMPAR A RIFA (Ganhadores serão mantidos), digite SIM:");
         if (confirmacao && confirmacao.toUpperCase() === "SIM") {
-            // Atualiza cabeçalho, rodapé e limite preservando a estrutura
             refRifa.update({ 
                 limite: parseInt(document.getElementById('maxNumeros').value), 
                 cabecalho: document.getElementById('cabecalho').value, 
                 rodape: document.getElementById('rodape').value
             });
-            // Remove estritamente apenas a lista de números vendidos
             refRifa.child('vendas').remove();
             alert("Rifa limpa! O histórico de resultados continuou intacto.");
         }
@@ -343,33 +346,45 @@
     function renderizarResultados(dados) {
         const divConteudo = document.getElementById('listaResultadosConteudo');
         
-        if (Object.keys(dados).length === 0) {
+        if (!dados || Object.keys(dados).length === 0) {
             divConteudo.innerHTML = '<div class="stats">Nenhum resultado registrado ainda.</div>';
             return;
         }
 
         let html = "";
-        const keys = Object.keys(dados).reverse(); 
+        
+        // Transforma o objeto em array para ordenar
+        let arrayResultados = Object.keys(dados).map(key => {
+            return { id: key, ...dados[key] };
+        });
 
-        keys.forEach(key => {
-            const res = dados[key];
+        // Ordena por data (decrescente). Em caso de datas iguais, desempata pelo ID cronológico do Firebase.
+        arrayResultados.sort((a, b) => {
+            const dataCompare = (b.data || "").localeCompare(a.data || "");
+            if (dataCompare !== 0) return dataCompare;
+            return b.id.localeCompare(a.id); 
+        });
+
+        arrayResultados.forEach(res => {
             const badgeClass = res.tipo === 'Mega' ? 'bg-mega' : 'bg-quina';
+            const ordemTexto = res.ordem ? `<span class="res-ordem">${res.ordem}</span>` : '';
             
             html += `
             <div class="item">
                 <div class="nome-container">
-                    <div class="res-info" onclick="togglePagoResultado('${key}', ${res.pago})">
+                    <div class="res-info" onclick="togglePagoResultado('${res.id}', ${res.pago})">
                         <div class="res-topo">
                             🗓️ ${formatarDataBr(res.data)}
                         </div>
-                        <div>
+                        <div style="margin-top: 4px;">
                             <span class="res-badge ${badgeClass}">${res.tipo}</span>
+                            ${ordemTexto}
                             <span style="font-weight: bold; color: #333;">Nº ${res.numero}</span> - 
                             <b>${res.nome}</b> 
                             ${res.pago ? '<span class="pago">PG</span>' : ''}
                         </div>
                     </div>
-                    <span class="btn-apagar" onclick="apagarResultado('${key}')">×</span>
+                    <span class="btn-apagar" onclick="apagarResultado('${res.id}')">×</span>
                 </div>
             </div>`;
         });
@@ -381,6 +396,7 @@
         const data = document.getElementById('resData').value;
         const nome = document.getElementById('resNome').value.trim();
         const tipo = document.getElementById('resTipo').value;
+        const ordem = document.getElementById('resOrdem').value;
         const numero = document.getElementById('resNumero').value.trim();
         const pago = document.getElementById('resPago').checked;
 
@@ -393,6 +409,7 @@
             data: data,
             nome: nome,
             tipo: tipo,
+            ordem: ordem,
             numero: numero,
             pago: pago
         });
@@ -406,7 +423,6 @@
         refResultados.child(id).update({ pago: !statusAtual });
     }
 
-    // O "X" continua funcionando individualmente por linha aqui
     function apagarResultado(id) {
         if(confirm("Deseja realmente apagar este ganhador do histórico?")) {
             refResultados.child(id).remove();
@@ -423,12 +439,23 @@
 
             let texto = "🏆 *RESULTADOS DOS SORTEIOS* 🏆\n\n";
             
-            const keys = Object.keys(dados).reverse();
-            keys.forEach(key => {
-                const res = dados[key];
+            // Transforma o objeto em array e ordena igual na tela
+            let arrayResultados = Object.keys(dados).map(key => {
+                return { id: key, ...dados[key] };
+            });
+
+            arrayResultados.sort((a, b) => {
+                const dataCompare = (b.data || "").localeCompare(a.data || "");
+                if (dataCompare !== 0) return dataCompare;
+                return b.id.localeCompare(a.id);
+            });
+
+            arrayResultados.forEach(res => {
                 const statusStr = res.pago ? ' ✅ Pago' : ' ⏳ Aguardando Pagamento';
+                const ordemTexto = res.ordem ? ` (${res.ordem})` : '';
+                
                 texto += `🗓️ *${formatarDataBr(res.data)}*\n`;
-                texto += `🍀 *${res.tipo}* - Sorteado: *Nº ${res.numero}*\n`;
+                texto += `🍀 *${res.tipo}*${ordemTexto} - Sorteado: *Nº ${res.numero}*\n`;
                 texto += `👤 Ganhador: ${res.nome}\n`;
                 texto += `💰 Status:${statusStr}\n\n`;
             });
