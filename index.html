@@ -48,6 +48,11 @@
         .btn-reset { background: #ff5252; color: white; width: 100%; font-size: 11px; margin-top: 40px; opacity: 0.5; }
         .stats { font-size: 12px; color: #666; text-align: center; margin-bottom: 8px; }
 
+		@media (max-width: 720px) {
+            #telaResultados .row { flex-wrap: wrap; }
+            #resNumero { flex: 1 1 100%; margin-top: 5px; }
+        }
+		
         /* Estilos específicos para Resultados */
         .res-info { display: flex; flex-direction: column; flex: 1; }
         .res-topo { font-size: 12px; color: #666; margin-bottom: 4px; }
@@ -84,7 +89,7 @@
             <button class="btn-copy-error" onclick="copiarErro()">Copiar Erro</button>
         </div>
     </div>
-
+	
     <button class="btn-copiar" onclick="copiarWhatsApp()">📋 Copiar Lista WhatsApp</button>
 
     <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -130,6 +135,12 @@
             <input type="checkbox" id="resPago"> Sorteio Pago (PG)
         </label>
         <button class="btn-vender" onclick="adicionarResultado()">Salvar Ganhador</button>
+    </div>
+	
+	<div style="margin-top: 15px; margin-bottom: 5px;">
+        <label class="pg-check" style="display: inline-flex;">
+            <input type="checkbox" id="checkCopiarPg" checked> Copiar Pagamentos
+        </label>
     </div>
 
     <button class="btn-copiar" onclick="copiarResultados()">📋 Copiar Resultados para WhatsApp</button>
@@ -420,15 +431,19 @@
     }
 
     function togglePagoResultado(id, statusAtual) {
-        refResultados.child(id).update({ pago: !statusAtual });
-    }
-
-    function apagarResultado(id) {
-        if(confirm("Deseja realmente apagar este ganhador do histórico?")) {
-            refResultados.child(id).remove();
+        const acao = statusAtual ? "REMOVER o status de pago" : "CONFIRMAR o pagamento";
+        const confirmacao = prompt(`Para ${acao} deste ganhador, digite SIM:`);
+        if (confirmacao && confirmacao.toUpperCase() === "SIM") {
+            refResultados.child(id).update({ pago: !statusAtual });
         }
     }
 
+    function apagarResultado(id) {
+        const confirmacao = prompt("Para APAGAR este ganhador do histórico, digite SIM:");
+        if (confirmacao && confirmacao.toUpperCase() === "SIM") {
+            refResultados.child(id).remove();
+        }
+    }
     function copiarResultados() {
         refResultados.once('value', (snapshot) => {
             const dados = snapshot.val() || {};
@@ -438,6 +453,7 @@
             }
 
             let texto = "🏆 *RESULTADOS DOS SORTEIOS* 🏆\n\n";
+            const incluirPagamento = document.getElementById('checkCopiarPg').checked;
             
             // Transforma o objeto em array e ordena igual na tela
             let arrayResultados = Object.keys(dados).map(key => {
@@ -457,7 +473,12 @@
                 texto += `🗓️ *${formatarDataBr(res.data)}*\n`;
                 texto += `🍀 *${res.tipo}*${ordemTexto} - Sorteado: *Nº ${res.numero}*\n`;
                 texto += `👤 Ganhador: ${res.nome}\n`;
-                texto += `💰 Status:${statusStr}\n\n`;
+                
+                if (incluirPagamento) {
+                    texto += `💰 Status:${statusStr}\n`;
+                }
+                
+                texto += `\n`; // Adiciona o espaçamento final entre os blocos
             });
 
             navigator.clipboard.writeText(texto.trim());
